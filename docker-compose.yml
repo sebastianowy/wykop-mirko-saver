@@ -4,6 +4,7 @@ services:
       context: .
       args:
         INSTALL_CHROMIUM: ${INSTALL_CHROMIUM}
+        PUPPETEER_SKIP_DOWNLOAD: ${PUPPETEER_SKIP_DOWNLOAD}
     env_file:
       - .env
     command: ["node", "dist/index.js"]
