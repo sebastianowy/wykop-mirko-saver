@@ -3,7 +3,6 @@ services:
     build: .
     env_file:
       - .env
-    restart: on-failure
     volumes:
       - ./output:/app/output
       - ./dist:/app/dist

@@ -141,7 +141,7 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     imgs.map((img: any) => img.src).filter((src: string) => src.startsWith(base)), new URL(url).origin);
   for (const imgUrl of imgUrls) {
     const imgName = path.basename(new URL(imgUrl).pathname);
-    const imgPath = path.join(pageDir, assetsDir, imgName);
+    const imgPath = path.join(assetsDir, imgName);
     resourceMap[imgUrl] = imgName;
     try {
       await downloadFile(imgUrl, imgPath);
