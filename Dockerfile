@@ -3,4 +3,6 @@ WORKDIR /app
 COPY . .
 RUN apt-get update && apt-get install -y chromium
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
-CMD ["/bin/sh", "-c", "npm install && npm run build && node dist/index.js"]
+RUN npm install
+RUN npm run build
+CMD ["/bin/sh", "-c", "node dist/index.js"]
