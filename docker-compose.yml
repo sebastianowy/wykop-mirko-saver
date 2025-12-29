@@ -8,6 +8,3 @@ services:
       - ./output:/app/output
       - ./dist:/app/dist
       - ./node_modules:/app/node_modules
-    environment:
-      - TZ
-    command: ["node", "dist/index.js"]
