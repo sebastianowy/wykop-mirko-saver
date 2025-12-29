@@ -1,0 +1,21 @@
+{
+  "name": "wykop-mirko-saver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "axios": "^1.13.2",
+    "nodemailer": "^7.0.12",
+    "puppeteer": "^24.34.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/nodemailer": "^7.0.4",
+    "typescript": "^5.5.3"
+  },
+  "private": true
+}

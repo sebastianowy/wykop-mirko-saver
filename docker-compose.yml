@@ -1,0 +1,12 @@
+services:
+  wykop-mirko-saver:
+    build: .
+    env_file:
+      - .env
+    restart: on-failure
+    volumes:
+      - ./output:/app/output
+      - ./dist:/app/dist
+    environment:
+      - TZ
+    command: ["node", "dist/index.js"]
