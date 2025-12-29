@@ -1,6 +1,9 @@
 services:
   wykop-mirko-saver:
-    build: .
+    build:
+      context: .
+      args:
+        INSTALL_CHROMIUM: ${INSTALL_CHROMIUM}
     env_file:
       - .env
     command: ["node", "dist/index.js"]
