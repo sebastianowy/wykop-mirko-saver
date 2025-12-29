@@ -223,7 +223,14 @@ async function login(page: Page) {
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 800, height: 600 });
+  await page.emulateMediaFeatures([
+    { name: 'prefers-color-scheme', value: 'dark' }
+  ]);
   await login(page);
+  await page.evaluate(() => {
+    document.body.setAttribute('data-color-scheme', 'dark');
+    document.documentElement.setAttribute('data-color-scheme', 'dark');
+  });
   let url = BASE_URL;
   for (let i = 1; i <= PAGES_TO_SCRAPE; i++) {
     console.log(`Downloading page ${i}...`);
