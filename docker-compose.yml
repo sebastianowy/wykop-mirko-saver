@@ -3,7 +3,3 @@ services:
     build: .
     env_file:
       - .env
-    volumes:
-      - ./output:/app/output
-      - ./dist:/app/dist
-      - ./node_modules:/app/node_modules
