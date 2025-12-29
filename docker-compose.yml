@@ -1,9 +1,10 @@
 services:
   wykop-mirko-saver:
+    build: .
+    env_file:
+      - .env
+    command: ["node", "dist/index.js"]
     ulimits:
       nofile:
         soft: 4096
         hard: 8192
-    build: .
-    env_file:
-      - .env
