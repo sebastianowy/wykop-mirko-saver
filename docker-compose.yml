@@ -1,5 +1,9 @@
 services:
   wykop-mirko-saver:
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
     build: .
     env_file:
       - .env
