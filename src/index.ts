@@ -134,8 +134,12 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
       }
       try {
         const response = await axios.get(absUrl, { responseType: 'arraybuffer' });
-        const mimeType = response.headers['content-type'] || 'image/png';
-        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        // normalize mime type (remove charset) and fallback to image/png
+        const rawType = response.headers['content-type'] || 'image/png';
+        const mimeType = String(rawType).split(';')[0];
+        let base64 = Buffer.from(response.data, 'binary').toString('base64');
+        // ensure no whitespace/newlines in base64 (defensive)
+        base64 = base64.replace(/\s+/g, '');
         const dataUrl = `data:${mimeType};base64,${base64}`;
         await imgHandle.evaluate((img, dataUrl) => { img.src = dataUrl; }, dataUrl);
       } catch (e) {
@@ -168,12 +172,15 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   }
 
   const html = await page.content();
+  // sanitize data:...;base64, payloads — remove any whitespace/newlines that might have been inserted
+  const sanitizedHtml = html.replace(/(data:[^;]+;base64,)([A-Za-z0-9+\/=\s]+)/g, (_m, p1, p2) => p1 + p2.replace(/\s+/g, ''));
+
   const pageDir = PAGE_DIR;
   fs.mkdirSync(pageDir, { recursive: true });
   const fileName = `${NAME_PREFIX}_${pageNum}.html`;
   const filePath = path.join(pageDir, fileName);
   fs.mkdirSync(pageDir, { recursive: true });
-  fs.writeFileSync(filePath, html);
+  fs.writeFileSync(filePath, sanitizedHtml);
 }
 
 function zipOutput() {
