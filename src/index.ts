@@ -141,66 +141,36 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     }
   }
 
+  const stylesheetLinks = await page.$$eval('link[rel="stylesheet"][href]', links => links.map(l => l.getAttribute('href')));
+  for (const href of stylesheetLinks) {
+    if (!href) continue;
+    let absUrl = href;
+    if (!href.startsWith('http')) {
+      absUrl = new URL(href, url).href;
+    }
+    try {
+      const response = await axios.get(absUrl);
+      const css = response.data;
+      await page.evaluate((href, css) => {
+        const link = document.querySelector<HTMLLinkElement>(`link[rel=stylesheet][href='${href}']`);
+        if (link) {
+          const style = document.createElement('style');
+          style.textContent = css;
+          link!.parentNode?.replaceChild(style, link);
+        }
+      }, href, css);
+    } catch (e) {
+      console.warn('Failed to download stylesheet:', absUrl);
+    }
+  }
+
   const html = await page.content();
   const pageDir = PAGE_DIR;
   fs.mkdirSync(pageDir, { recursive: true });
   const fileName = `${NAME_PREFIX}_${pageNum}.html`;
   const filePath = path.join(pageDir, fileName);
   fs.mkdirSync(pageDir, { recursive: true });
-  const assetsDir = path.join(pageDir, `${pageNum}`);
-  fs.mkdirSync(assetsDir, { recursive: true });
-
-  const resources = await page.evaluate(() => {
-    const toDownload: {tag: string, attr: string, url: string}[] = [];
-    document.querySelectorAll('img[src]')?.forEach(img => {
-      const src = img.getAttribute('src');
-      if (src && !src.startsWith('http') && !src.startsWith('data:')) {
-        toDownload.push({tag: 'img', attr: 'src', url: src});
-      }
-    });
-    document.querySelectorAll('link[rel="stylesheet"][href]')?.forEach(link => {
-      const href = link.getAttribute('href');
-      if (href && !href.startsWith('http') && !href.startsWith('data:')) {
-        toDownload.push({tag: 'link', attr: 'href', url: href});
-      }
-    });
-    return toDownload;
-  });
-
-  const resourceMap: Record<string, string> = {};
-  for (const res of resources) {
-    const absUrl = new URL(res.url, url).href;
-    const resName = path.basename(new URL(absUrl).pathname);
-    const resPath = path.join(assetsDir, resName);
-    resourceMap[res.url] = `${pageNum}/${resName}`;
-    try {
-      fs.mkdirSync(assetsDir, { recursive: true });
-      await downloadFile(absUrl, resPath);
-    } catch (e) {
-      console.warn('Failed to download resource:', absUrl);
-    }
-  }
-
-  const imgUrls = await page.$$eval('img', (imgs: any[], base: string) =>
-    imgs.map((img: any) => img.src).filter((src: string) => src.startsWith(base)), new URL(url).origin);
-  for (const imgUrl of imgUrls) {
-    const imgName = path.basename(new URL(imgUrl).pathname);
-    const imgDir = assetsDir;
-    const imgPath = path.join(imgDir, imgName);
-    resourceMap[imgUrl] = `${pageNum}/${imgName}`;
-    try {
-      fs.mkdirSync(imgDir, { recursive: true });
-      await downloadFile(imgUrl, imgPath);
-    } catch (e) {
-      console.warn('Failed to download image:', imgUrl);
-    }
-  }
-
-  let updatedHtml = html;
-  for (const [original, local] of Object.entries(resourceMap)) {
-    updatedHtml = updatedHtml.replace(new RegExp(`(["'])${original}(["'])`, 'g'), `$1${local}$2`);
-  }
-  fs.writeFileSync(filePath, updatedHtml);
+  fs.writeFileSync(filePath, html);
 }
 
 function zipOutput() {
