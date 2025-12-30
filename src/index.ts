@@ -104,6 +104,9 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     if (offsetScrolled === 0) {
       await handleCookieMessage(page);
     }
+    await page.evaluate(() => {
+      document.querySelectorAll<HTMLButtonElement>('button.more').forEach(btn => btn.click());
+    });
     if (offsetScrolled === currentOffset) { reachedEnd = true; }
     currentOffset = offsetScrolled;
   } while (!reachedEnd);
@@ -121,12 +124,28 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     document.body.removeAttribute('style');
   });
 
+  const imgHandles = await page.$$('img[src]');
+  for (const imgHandle of imgHandles) {
+    const src = await imgHandle.evaluate((img) => img.getAttribute('src'));
+    if (src && !src.startsWith('data:') && !src.startsWith('http')) {
+      const absUrl = new URL(src, url).href;
+      try {
+        const response = await axios.get(absUrl, { responseType: 'arraybuffer' });
+        const mimeType = response.headers['content-type'] || 'image/png';
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        await imgHandle.evaluate((img, dataUrl) => { img.src = dataUrl; }, dataUrl);
+      } catch (e) {
+        console.warn('Failed to download image:', absUrl);
+      }
+    }
+  }
+
   const html = await page.content();
   const pageDir = PAGE_DIR;
   fs.mkdirSync(pageDir, { recursive: true });
   const fileName = `${NAME_PREFIX}_${pageNum}.html`;
   const filePath = path.join(pageDir, fileName);
-  fs.writeFileSync(filePath, html);
   fs.mkdirSync(pageDir, { recursive: true });
   const assetsDir = path.join(pageDir, `${pageNum}`);
   fs.mkdirSync(assetsDir, { recursive: true });
