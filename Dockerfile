@@ -9,6 +9,7 @@ RUN rm -rf /var/lib/apt/lists/*
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY . .
-RUN npm install --force sharp && npm install
+RUN npm install --os=linux --cpu=x64 sharp
+RUN npm install
 RUN npm run build
 CMD ["/bin/sh", "-c", "node dist/index.js"]
