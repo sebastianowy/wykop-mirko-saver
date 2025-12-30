@@ -7,7 +7,6 @@ RUN if [ "$INSTALL_CHROMIUM" = "true" ]; then \
     apt-get install -y wget ca-certificates gnupg && \
     rm -f /etc/apt/trusted.gpg && \
     wget -O- https://ftp-master.debian.org/keys/archive-key-12.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/debian-archive-key-12.gpg && \
-    wget -O- https://ftp-master.debian.org/keys/archive-key.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/debian-archive-key.gpg && \
     apt-get update && \
     apt-get install -y chromium && \
     echo 'export PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"' >> /etc/profile.d/chromium.sh; \
