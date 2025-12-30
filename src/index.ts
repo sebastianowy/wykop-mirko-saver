@@ -127,8 +127,11 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   const imgHandles = await page.$$('img[src]');
   for (const imgHandle of imgHandles) {
     const src = await imgHandle.evaluate((img) => img.getAttribute('src'));
-    if (src && !src.startsWith('data:') && !src.startsWith('http')) {
-      const absUrl = new URL(src, url).href;
+    if (src && !src.startsWith('data:')) {
+      let absUrl = src;
+      if (!src.startsWith('http')) {
+        absUrl = new URL(src, url).href;
+      }
       try {
         const response = await axios.get(absUrl, { responseType: 'arraybuffer' });
         const mimeType = response.headers['content-type'] || 'image/png';
