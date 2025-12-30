@@ -16,7 +16,8 @@ const SMTP_PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465;
 const BASE_URL = 'https://wykop.pl/mikroblog/gorace/24';
 const DATE_PREFIX = new Date().toISOString().split('T')[0].replace(/-/g, '');
 const PAGE_DIR = path.join(__dirname, '../output', DATE_PREFIX);
-const NAME = `wykop_mirko_${DATE_PREFIX}`;
+const NAME_PREFIX = `wykop_mirko`;
+const NAME = `${DATE_PREFIX}_${NAME_PREFIX}`;
 const ZIP_FILE_NAME = `${NAME}.zip`;
 const ZIP_DIR = path.join(__dirname, '../output', 'zips');
 const ZIP_PATH = path.join(ZIP_DIR, ZIP_FILE_NAME);
@@ -53,8 +54,9 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
 
   let reachedEnd = false;
   let currentOffset = 0;
+  let maxScroll = await page.evaluate(() => document.body.scrollHeight - window.innerHeight);
   do {
-    const processed = await page.evaluate(() => {
+    await page.evaluate(() => {
       const entries = Array.from(document.querySelectorAll<HTMLDivElement>('section.entry.active')).filter(el => {
         const rect = el.getBoundingClientRect();
         return (
@@ -77,18 +79,16 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
         orig.insertAdjacentHTML('beforebegin', clone.outerHTML);
         orig.remove();
       });
-      return entries.length;
     });
-    console.log('Processed entries:', processed);
 
     await new Promise(r => setTimeout(r, 600));
 
     await page.evaluate(() => {
         window.scrollTo(0, window.pageYOffset + window.outerHeight);
     });
-    console.log('Scrolled to next');
-
-    const offsetScrolled = await page.evaluate(() => (window.pageYOffset));
+    const offsetScrolled = await page.evaluate(() => window.pageYOffset);
+    const percent = maxScroll === 0 ? 100 : Math.min(100, (offsetScrolled / maxScroll) * 100).toFixed(1);
+    console.log(`Position: ${offsetScrolled}/${maxScroll} (${percent}%)`);
     if (offsetScrolled === currentOffset) { reachedEnd = true; }
     currentOffset = offsetScrolled;
   } while (!reachedEnd);
@@ -96,12 +96,14 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   await page.evaluate(() => {
     document.querySelectorAll('a').forEach(btn => btn.target = '_blank');
     document.querySelectorAll('script').forEach(s => s.remove());
+    document.querySelectorAll('[class^="app_gdpr"]').forEach(el => el.remove());
+    document.body.removeAttribute('style');
   });
 
   const html = await page.content();
   const pageDir = PAGE_DIR;
   fs.mkdirSync(pageDir, { recursive: true });
-  const fileName = `wykop_mirko_${pageNum}.html`;
+  const fileName = `${NAME_PREFIX}_${pageNum}.html`;
   const filePath = path.join(pageDir, fileName);
   fs.writeFileSync(filePath, html);
   fs.mkdirSync(pageDir, { recursive: true });
@@ -130,7 +132,7 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     const absUrl = new URL(res.url, url).href;
     const resName = path.basename(new URL(absUrl).pathname);
     const resPath = path.join(assetsDir, resName);
-    resourceMap[res.url] = resName;
+    resourceMap[res.url] = `${pageNum}/${resName}`;
     try {
       fs.mkdirSync(assetsDir, { recursive: true });
       await downloadFile(absUrl, resPath);
@@ -145,9 +147,9 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     const imgName = path.basename(new URL(imgUrl).pathname);
     const imgDir = assetsDir;
     const imgPath = path.join(imgDir, imgName);
-    resourceMap[imgUrl] = imgName;
+    resourceMap[imgUrl] = `${pageNum}/${imgName}`;
     try {
-      fs.mkdirSync(imgDir, { recursive: true }); // Upewnij się, że katalog istnieje
+      fs.mkdirSync(imgDir, { recursive: true });
       await downloadFile(imgUrl, imgPath);
     } catch (e) {
       console.warn('Failed to download image:', imgUrl);
@@ -189,7 +191,7 @@ async function sendEmail() {
   await transporter.sendMail({
     from: EMAIL_FROM,
     to: EMAIL_TO,
-    subject: NAME,
+    subject: `auto ${NAME}`,
     text: NAME,
     attachments: [{ filename: ZIP_FILE_NAME, path: ZIP_PATH }],
   });
@@ -201,15 +203,6 @@ async function login(page: Page) {
   await page.click('a[href="/logowanie"]');
   await handleCookieMessage(page);
   await page.waitForSelector('.modal.login', {visible: true, timeout: 5000});
-
-  const html = await page.content();
-  const pageDir = path.join(PAGE_DIR,`login`);
-  fs.mkdirSync(pageDir, { recursive: true });
-  const fileName = `login.html`;
-  const filePath = path.join(pageDir, fileName);
-
-  fs.writeFileSync(filePath, html);
-
   await page.waitForSelector('.login.modal .form-group input[type=text]');
   await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50});
   await page.type('.login.modal .form-group.password input[type=password]', PASS, {delay: 50});
@@ -226,7 +219,7 @@ async function login(page: Page) {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 800, height: 600 });
+  await page.setViewport({ width: 800, height: 600*3 });
   await page.emulateMediaFeatures([
     { name: 'prefers-color-scheme', value: 'dark' }
   ]);
