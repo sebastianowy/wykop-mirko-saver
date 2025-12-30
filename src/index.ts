@@ -4,7 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import archiver from 'archiver';
 import nodemailer from 'nodemailer';
-import sharp from 'sharp';
+import Jimp from 'jimp';
 
 const USER = process.env.USER || '';
 const PASS = process.env.PASS || '';
@@ -131,15 +131,16 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
         let processedBuffer = imageBuffer;
         let metadata;
         try {
-          metadata = await sharp(imageBuffer).metadata();
+          const image = await Jimp.read(imageBuffer);
+          metadata = { width: image.bitmap.width, height: image.bitmap.height };
+          if (metadata && (metadata.width > 1024 || metadata.height > 1024 || imageBuffer.length > 300 * 1024)) {
+            processedBuffer = await image
+              .resize(1024, 1024, Jimp.RESIZE_BEZIER)
+              .quality(80)
+              .getBufferAsync(Jimp.MIME_JPEG);
+            mimeType = 'image/jpeg';
+          }
         } catch {}
-        if (metadata && (metadata.width > 1024 || metadata.height > 1024 || imageBuffer.length > 300 * 1024)) {
-          processedBuffer = await sharp(imageBuffer)
-            .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 80 })
-            .toBuffer();
-          mimeType = 'image/jpeg';
-        }
         if (!mimeType || !mimeType.startsWith('image/')) {
           if (absUrl.match(/\.png$/i)) mimeType = 'image/png';
           else if (absUrl.match(/\.jpe?g$/i)) mimeType = 'image/jpeg';
@@ -236,8 +237,19 @@ async function login(page: Page) {
   await page.waitForSelector('.modal.login', {visible: true, timeout: 5000});
   await page.waitForSelector('.login.modal .form-group input[type=text]');
   await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50});
-  await page.type('.login.modal .form-group.password input[type=password]', PASS, {delay: 50});
-  await page.click('.login.modal .button button.target');
+  await page.type('.login.modal .password input[type=password]', PASS, {delay: 50});
+  await page.click('.login.modal .button button[type=submit]');
+  try {
+    await page.waitForSelector('.modal.login', {hidden: true, timeout: 5000});
+  } catch {
+    await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50});
+    await page.type('.login.modal .form-group.password input[type=password]', PASS, {delay: 50});
+    await page.click('.login.modal .button button.target');
+    await page.waitForSelector('.modal.login', {hidden: true, timeout: 5000}).catch(async () => {
+      await page.evaluate(() => document.querySelectorAll('#modals-container').forEach(el => el.remove()));
+      console.log('Login failed after retrying. Hiding logging modal.');
+    });
+  }
 }
 
 (async () => {
