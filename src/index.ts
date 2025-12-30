@@ -54,7 +54,6 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
 
   let reachedEnd = false;
   let currentOffset = 0;
-  let maxScroll = await page.evaluate(() => document.body.scrollHeight - window.innerHeight);
   do {
     await page.evaluate(() => {
       const entries = Array.from(document.querySelectorAll<HTMLDivElement>('section.entry.active')).filter(el => {
@@ -86,9 +85,8 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     await page.evaluate(() => {
         window.scrollTo(0, window.pageYOffset + window.outerHeight);
     });
-    const offsetScrolled = await page.evaluate(() => window.pageYOffset);
-    const percent = maxScroll === 0 ? 100 : Math.min(100, (offsetScrolled / maxScroll) * 100).toFixed(1);
-    console.log(`Position: ${offsetScrolled}/${maxScroll} (${percent}%)`);
+    const offsetScrolled = await page.evaluate(() => (window.pageYOffset));
+    console.log('Scrolled to offset:', offsetScrolled);
     if (offsetScrolled === currentOffset) { reachedEnd = true; }
     currentOffset = offsetScrolled;
   } while (!reachedEnd);
@@ -219,7 +217,7 @@ async function login(page: Page) {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 800, height: 600*3 });
+  await page.setViewport({ width: 800, height: 1800 });
   await page.emulateMediaFeatures([
     { name: 'prefers-color-scheme', value: 'dark' }
   ]);
