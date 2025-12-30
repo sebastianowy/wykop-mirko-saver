@@ -109,7 +109,13 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   } while (!reachedEnd);
 
   await page.evaluate(() => {
-    document.querySelectorAll('a').forEach(btn => btn.target = '_blank');
+    document.querySelectorAll('a').forEach(btn => {
+      btn.target = '_blank';
+      const href = btn.getAttribute('href');
+      if (href && !href.startsWith('http')) {
+        btn.setAttribute('href', 'https://wykop.pl' + href);
+      }
+    });
     document.querySelectorAll('script').forEach(s => s.remove());
     document.querySelectorAll('[class^="app_gdpr"]').forEach(el => el.remove());
     document.body.removeAttribute('style');
