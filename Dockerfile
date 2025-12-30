@@ -11,7 +11,7 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY . .
 RUN rm -rf node_modules
 RUN npm install node-addon-api
-RUN npm install --build-from-source sharp
+RUN npm install --build-from-source --include=optional sharp
 RUN npm install
 RUN npm run build
 CMD ["/bin/sh", "-c", "node dist/index.js"]
