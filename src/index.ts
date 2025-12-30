@@ -94,7 +94,8 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   } while (!reachedEnd);
 
   await page.evaluate(() => {
-    document.querySelectorAll<HTMLAnchorElement>('a').forEach(btn => btn.target = '_blank');
+    document.querySelectorAll('a').forEach(btn => btn.target = '_blank');
+    document.querySelectorAll('script').forEach(s => s.remove());
   });
 
   const html = await page.content();
