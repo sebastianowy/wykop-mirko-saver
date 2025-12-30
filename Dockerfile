@@ -10,8 +10,8 @@ ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY . .
 RUN rm -rf node_modules
-RUN npm install node-addon-api
-RUN npm install --include=optional --cpu=x64 --os=linux --libc=glibc sharp
+RUN npm explore sharp -- npm run build
+RUN npm install node-addon-api node-gyp
 RUN npm install
 RUN npm run build
 CMD ["/bin/sh", "-c", "node dist/index.js"]
