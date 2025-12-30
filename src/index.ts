@@ -48,7 +48,19 @@ async function handleCookieMessage(page: Page) {
 
 async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   if(url !== page.url()) {
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    let navigationTries = 0;
+    let navigationSuccess = false;
+    while (navigationTries < 2 && !navigationSuccess) {
+      try {
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        navigationSuccess = true;
+      } catch (err) {
+        navigationTries++;
+        if (navigationTries >= 2) throw err;
+        console.warn(`Navigation to ${url} failed, retrying (${navigationTries})...`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
   }
   await handleCookieMessage(page);
 
