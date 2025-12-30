@@ -34,6 +34,7 @@ async function downloadFile(url: string, dest: string) {
 }
 
 async function handleCookieMessage(page: Page) {
+  console.log('Checking for cookie message...');
   await new Promise(r => setTimeout(r, 2000));
   const hadCoo = await page.evaluate(() => {
     const coo = document.querySelectorAll('[class^="app_gdpr"]');
@@ -44,6 +45,7 @@ async function handleCookieMessage(page: Page) {
   if (hadCoo) {
     await new Promise(r => setTimeout(r, 2000));
   }
+  console.log(`Cookie message ${hadCoo ? 'removed' : 'not found'}.`);
 }
 
 async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
@@ -99,6 +101,9 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     });
     const offsetScrolled = await page.evaluate(() => (window.pageYOffset));
     console.log('Scrolled to offset:', offsetScrolled);
+    if (offsetScrolled === 0) {
+      await handleCookieMessage(page);
+    }
     if (offsetScrolled === currentOffset) { reachedEnd = true; }
     currentOffset = offsetScrolled;
   } while (!reachedEnd);
