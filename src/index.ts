@@ -4,6 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import archiver from 'archiver';
 import nodemailer from 'nodemailer';
+import sharp from 'sharp';
 
 const USER = process.env.USER || '';
 const PASS = process.env.PASS || '';
@@ -22,16 +23,6 @@ const ZIP_FILE_NAME = `${NAME}.zip`;
 const ZIP_DIR = path.join(__dirname, '../output', 'zips');
 const ZIP_PATH = path.join(ZIP_DIR, ZIP_FILE_NAME);
 const PAGES_TO_SCRAPE = 4;
-
-async function downloadFile(url: string, dest: string) {
-  const writer = fs.createWriteStream(dest);
-  const response = await axios({ url, method: 'GET', responseType: 'stream' });
-  response.data.pipe(writer);
-  return new Promise((resolve, reject) => {
-    writer.on('finish', resolve);
-    writer.on('error', reject);
-  });
-}
 
 async function handleCookieMessage(page: Page) {
   console.log('Checking for cookie message...');
@@ -134,16 +125,36 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
       }
       try {
         const response = await axios.get(absUrl, { responseType: 'arraybuffer' });
-        // normalize mime type (remove charset) and fallback to image/png
-        const rawType = response.headers['content-type'] || 'image/png';
-        const mimeType = String(rawType).split(';')[0];
-        let base64 = Buffer.from(response.data, 'binary').toString('base64');
-        // ensure no whitespace/newlines in base64 (defensive)
-        base64 = base64.replace(/\s+/g, '');
+        let mimeType = response.headers['content-type'];
+        let imageBuffer = Buffer.from(response.data); // poprawka typów
+        // Compress/resize if too large
+        let processedBuffer = imageBuffer;
+        let metadata;
+        try {
+          metadata = await sharp(imageBuffer).metadata();
+        } catch {}
+        if (metadata && (metadata.width > 1024 || metadata.height > 1024 || imageBuffer.length > 300 * 1024)) {
+          processedBuffer = await sharp(imageBuffer)
+            .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+          mimeType = 'image/jpeg';
+        }
+        if (!mimeType || !mimeType.startsWith('image/')) {
+          if (absUrl.match(/\.png$/i)) mimeType = 'image/png';
+          else if (absUrl.match(/\.jpe?g$/i)) mimeType = 'image/jpeg';
+          else if (absUrl.match(/\.webp$/i)) mimeType = 'image/webp';
+          else if (absUrl.match(/\.gif$/i)) mimeType = 'image/gif';
+          else mimeType = 'image/jpeg';
+        }
+        const base64 = processedBuffer.toString('base64');
         const dataUrl = `data:${mimeType};base64,${base64}`;
-        await imgHandle.evaluate((img, dataUrl) => { img.src = dataUrl; }, dataUrl);
+        await imgHandle.evaluate((img, dataUrl) => {
+          img.removeAttribute('srcset');
+          img.src = dataUrl;
+        }, dataUrl);
       } catch (e) {
-        console.warn('Failed to download image:', absUrl);
+        console.warn('Failed to download or convert image:', absUrl, e instanceof Error ? e.message : e);
       }
     }
   }
