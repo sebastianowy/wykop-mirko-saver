@@ -240,7 +240,7 @@ async function login(page: Page) {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 800, height: 1800 });
+  await page.setViewport({ width: 375, height: 1800 });
   await page.emulateMediaFeatures([
     { name: 'prefers-color-scheme', value: 'dark' }
   ]);
