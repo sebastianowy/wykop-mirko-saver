@@ -131,6 +131,7 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     const resPath = path.join(assetsDir, resName);
     resourceMap[res.url] = resName;
     try {
+      fs.mkdirSync(assetsDir, { recursive: true });
       await downloadFile(absUrl, resPath);
     } catch (e) {
       console.warn('Failed to download resource:', absUrl);
@@ -141,9 +142,11 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     imgs.map((img: any) => img.src).filter((src: string) => src.startsWith(base)), new URL(url).origin);
   for (const imgUrl of imgUrls) {
     const imgName = path.basename(new URL(imgUrl).pathname);
-    const imgPath = path.join(assetsDir, imgName);
+    const imgDir = assetsDir;
+    const imgPath = path.join(imgDir, imgName);
     resourceMap[imgUrl] = imgName;
     try {
+      fs.mkdirSync(imgDir, { recursive: true }); // Upewnij się, że katalog istnieje
       await downloadFile(imgUrl, imgPath);
     } catch (e) {
       console.warn('Failed to download image:', imgUrl);
