@@ -237,15 +237,15 @@ async function login(page: Page) {
   await handleCookieMessage(page);
   await page.waitForSelector('.modal.login', {visible: true, timeout: 5000});
   await page.waitForSelector('.login.modal .form-group input[type=text]');
-  await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50});
-  await page.type('.login.modal .password input[type=password]', PASS, {delay: 50});
-  await page.click('.login.modal .button button[type=submit]');
+  await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50}).catch(console.warn);
+  await page.type('.login.modal .password input[type=password]', PASS, {delay: 50}).catch(console.warn);
+  await page.click('.login.modal .button button[type=submit]').catch(console.warn);
   try {
     await page.waitForSelector('.modal.login', {hidden: true, timeout: 5000});
   } catch {
-    await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50});
-    await page.type('.login.modal .form-group.password input[type=password]', PASS, {delay: 50});
-    await page.click('.login.modal .button button.target');
+    await page.type('.login.modal .form-group input[type=text]', USER, {delay: 50 }).catch(console.warn);
+    await page.type('.login.modal .form-group.password input[type=password]', PASS, {delay: 50}).catch(console.warn);
+    await page.click('.login.modal .button button.target').catch(console.warn);
     await page.waitForSelector('.modal.login', {hidden: true, timeout: 5000}).catch(async () => {
       await page.evaluate(() => document.querySelectorAll('#modals-container').forEach(el => el.remove()));
       console.log('Login failed after retrying. Hiding logging modal.');
