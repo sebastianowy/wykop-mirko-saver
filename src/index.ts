@@ -14,7 +14,8 @@ const EMAIL_PASS = process.env.EMAIL_PASS || '';
 const SMTP_HOST = process.env.SMTP_HOST || '';
 const SMTP_PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465;
 
-const BASE_URL = 'https://wykop.pl/mikroblog/gorace/24';
+const BASE_URL = 'https://wykop.pl';
+const MIRKO_URL = BASE_URL + '/mikroblog/gorace/24';
 const DATE_PREFIX = new Date().toISOString().split('T')[0].replace(/-/g, '');
 const PAGE_DIR = path.join(__dirname, '../output', DATE_PREFIX);
 const NAME_PREFIX = `wykop_mirko`;
@@ -71,7 +72,8 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
         );
       });
       entries.forEach(orig => {
-        orig.querySelectorAll<HTMLButtonElement>('button.more').forEach(btn => btn.click());
+        orig.querySelectorAll<HTMLButtonElement>('button.more').forEach(btn => (btn).click());
+        orig.querySelectorAll<HTMLButtonElement>('.content-spoiler button').forEach(btn => (btn).click());
         const datasetKeys = Object.keys(orig.dataset);
         for (let i = 1; i < datasetKeys.length; i++) {
           delete orig.dataset[datasetKeys[i]];
@@ -107,12 +109,13 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
       btn.target = '_blank';
       const href = btn.getAttribute('href');
       if (href && !href.startsWith('http')) {
-        btn.setAttribute('href', 'https://wykop.pl' + href);
+        btn.setAttribute('href', BASE_URL + href);
       }
     });
     document.querySelectorAll('script').forEach(s => s.remove());
     document.querySelectorAll('[class^="app_gdpr"]').forEach(el => el.remove());
     document.body.removeAttribute('style');
+    document.querySelectorAll('[data-label^="ad"]').forEach(el => el.remove());
   });
 
   const imgHandles = await page.$$('img[src]');
@@ -126,8 +129,7 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
       try {
         const response = await axios.get(absUrl, { responseType: 'arraybuffer' });
         let mimeType = response.headers['content-type'];
-        let imageBuffer = Buffer.from(response.data); // poprawka typów
-        // Compress/resize if too large
+        let imageBuffer = Buffer.from(response.data);
         let processedBuffer = imageBuffer;
         let metadata;
         try {
@@ -184,7 +186,6 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
   }
 
   const html = await page.content();
-  // sanitize data:...;base64, payloads — remove any whitespace/newlines that might have been inserted
   const sanitizedHtml = html.replace(/(data:[^;]+;base64,)([A-Za-z0-9+\/=\s]+)/g, (_m, p1, p2) => p1 + p2.replace(/\s+/g, ''));
 
   const pageDir = PAGE_DIR;
@@ -230,7 +231,7 @@ async function sendEmail() {
 }
 
 async function login(page: Page) {
-  await page.goto(BASE_URL, {waitUntil: 'networkidle2'});
+  await page.goto(MIRKO_URL, {waitUntil: 'networkidle2'});
   await handleCookieMessage(page);
   await page.click('a[href="/logowanie"]');
   await handleCookieMessage(page);
@@ -271,12 +272,12 @@ async function login(page: Page) {
     document.body.setAttribute('data-color-scheme', 'dark');
     document.documentElement.setAttribute('data-color-scheme', 'dark');
   });
-  let url = BASE_URL;
+  let url = MIRKO_URL;
   for (let i = 1; i <= PAGES_TO_SCRAPE; i++) {
     console.log(`Downloading page ${i}...`);
     await scrapPageWithNext(page, url, i);
     url = await page.$eval('.from-pagination-microblog .next a', el => el.getAttribute('href')).catch(() => null) || url;
-    if (url && !url.startsWith('http')) url = new URL(url, BASE_URL).href;
+    if (url && !url.startsWith('http')) url = new URL(url, MIRKO_URL).href;
     await new Promise(r => setTimeout(r, 2000));
   }
   console.log('Packing to ZIP...');
