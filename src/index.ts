@@ -104,7 +104,7 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     currentOffset = offsetScrolled;
   } while (!reachedEnd);
 
-  await page.evaluate(() => {
+  await page.evaluate((BASE_URL) => {
     document.querySelectorAll('a').forEach(btn => {
       btn.target = '_blank';
       const href = btn.getAttribute('href');
@@ -116,7 +116,7 @@ async function scrapPageWithNext(page: Page, url: string, pageNum: number) {
     document.querySelectorAll('[class^="app_gdpr"]').forEach(el => el.remove());
     document.body.removeAttribute('style');
     document.querySelectorAll('[data-label^="ad"]').forEach(el => el.remove());
-  });
+  }, BASE_URL);
 
   const imgHandles = await page.$$('img[src]');
   for (const imgHandle of imgHandles) {
