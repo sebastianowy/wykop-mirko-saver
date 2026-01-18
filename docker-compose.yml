@@ -2,7 +2,7 @@ services:
   wykop-mirko-saver:
     build:
       context: .
-      restart: on-failure
+    restart: on-failure
     env_file:
       - .env
     command: ["node", "dist/index.js"]
